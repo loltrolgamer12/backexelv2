@@ -1,3 +1,4 @@
+const express = require('express');
 const searchRouter = express.Router();
 
 // GET /api/search/predictive - Búsqueda predictiva global
