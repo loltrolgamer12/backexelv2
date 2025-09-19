@@ -538,4 +538,4 @@ const actualizarEstadosCalculados = async () => {
   }
 };
 
-module.exports = router;
+module.exports = { uploadRouter: router };

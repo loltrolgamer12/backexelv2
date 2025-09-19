@@ -401,4 +401,4 @@ alertsRouter.get('/notifications', async (req, res) => {
   }
 });
 
-module.exports = { reportsRouter, alertsRouter };
+module.exports = { alertsRouter };

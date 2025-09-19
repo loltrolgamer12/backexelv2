@@ -639,4 +639,4 @@ router.get('/analytics', async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = { driversRouter: router };

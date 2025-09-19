@@ -9,10 +9,10 @@ const { initDatabase } = require('./config/database');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 // Importar rutas
-const uploadRoutes = require('./routes/upload');
-const dashboardRoutes = require('./routes/dashboard');
-const driversRoutes = require('./routes/drivers');
-const vehiclesRoutes = require('./routes/vehicles');
+const { uploadRouter } = require('./routes/upload');
+const { dashboardRouter } = require('./routes/dashboard');
+const { driversRouter } = require('./routes/drivers');
+const { vehiclesRouter } = require('./routes/vehicles');
 const { fatigueRouter } = require('./routes/fatigue');
 const { searchRouter } = require('./routes/search');
 const { reportsRouter } = require('./routes/reports');
@@ -119,10 +119,10 @@ app.get('/api', (req, res) => {
 });
 
 // Rutas de la API
-app.use('/api/upload', uploadLimiter, uploadRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/drivers', driversRoutes);
-app.use('/api/vehicles', vehiclesRoutes);
+app.use('/api/upload', uploadLimiter, uploadRouter);
+app.use('/api/dashboard', dashboardRouter);
+app.use('/api/drivers', driversRouter);
+app.use('/api/vehicles', vehiclesRouter);
 app.use('/api/fatigue', fatigueRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/reports', reportsRouter);
