@@ -82,6 +82,146 @@ router.get('/status', async (req, res) => {
 });
 
 // GET /api/vehicles/list/:status - Lista de vehículos por estado
+// GET /api/vehicles/list - Lista de todos los vehículos
+router.get('/list', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search = '', campo = '', tipo_falla = '' } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Construir query con filtros
+    let whereClause = '';
+    let queryParams = [];
+    let paramIndex = 1;
+
+    if (search.trim()) {
+      whereClause += (whereClause ? ' AND ' : 'WHERE ') + `ve.placa_vehiculo ILIKE $${paramIndex}`;
+      queryParams.push(`%${search.trim().toUpperCase()}%`);
+      paramIndex++;
+    }
+
+    if (campo.trim()) {
+      whereClause += (whereClause ? ' AND ' : 'WHERE ') + `ve.campo_coordinacion ILIKE $${paramIndex}`;
+      queryParams.push(`%${campo.trim()}%`);
+      paramIndex++;
+    }
+
+    const vehiculosQuery = `
+      SELECT 
+        ve.placa_vehiculo,
+        ve.ultima_inspeccion,
+        ve.ultimo_conductor,
+        ve.estado,
+        ve.fallas_criticas,
+        ve.fallas_menores,
+        ve.total_inspecciones,
+        ve.observaciones_recientes,
+        ve.campo_coordinacion,
+        (SELECT kilometraje 
+         FROM inspecciones i 
+         WHERE i.placa_vehiculo = ve.placa_vehiculo 
+         ORDER BY i.marca_temporal DESC 
+         LIMIT 1) as ultimo_kilometraje,
+        EXTRACT(DAY FROM (CURRENT_TIMESTAMP - ve.ultima_inspeccion))::integer as dias_sin_inspeccion
+      FROM vehiculos_estado ve
+      ${whereClause}
+      ORDER BY 
+        ve.fallas_criticas DESC, 
+        ve.fallas_menores DESC,
+        ve.ultima_inspeccion DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+
+    queryParams.push(parseInt(limit), offset);
+
+    // Query para contar total
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM vehiculos_estado ve
+      ${whereClause}
+    `;
+
+    const [vehiculosResult, countResult] = await Promise.all([
+      query(vehiculosQuery, queryParams),
+      query(countQuery, queryParams.slice(0, -2))
+    ]);
+
+    // Obtener fallas específicas para cada vehículo
+    const placas = vehiculosResult.rows.map(row => row.placa_vehiculo);
+    let vehiculos = [];
+    if (placas.length > 0) {
+      const fallasEspecificasQuery = `
+        SELECT 
+          i.placa_vehiculo,
+          ei.elemento,
+          ei.es_critico,
+          i.marca_temporal
+        FROM elementos_inspeccion ei
+        JOIN inspecciones i ON ei.inspeccion_id = i.id
+        WHERE i.placa_vehiculo = ANY($1) 
+          AND NOT ei.cumple
+          AND i.marca_temporal = (
+            SELECT MAX(marca_temporal) 
+            FROM inspecciones i2 
+            WHERE i2.placa_vehiculo = i.placa_vehiculo
+          )
+        ORDER BY ei.es_critico DESC, ei.elemento ASC
+      `;
+
+      const fallasResult = await query(fallasEspecificasQuery, [placas]);
+      const fallasPorVehiculo = {};
+      fallasResult.rows.forEach(row => {
+        if (!fallasPorVehiculo[row.placa_vehiculo]) {
+          fallasPorVehiculo[row.placa_vehiculo] = [];
+        }
+        fallasPorVehiculo[row.placa_vehiculo].push({
+          elemento: row.elemento,
+          esCritico: row.es_critico,
+          fechaDeteccion: row.marca_temporal
+        });
+      });
+
+      vehiculos = vehiculosResult.rows.map(row => ({
+        placa: row.placa_vehiculo,
+        ultimaInspeccion: row.ultima_inspeccion,
+        ultimoConductor: row.ultimo_conductor,
+        estado: row.estado,
+        fallasCriticas: parseInt(row.fallas_criticas),
+        fallasMenores: parseInt(row.fallas_menores),
+        totalInspecciones: parseInt(row.total_inspecciones),
+        observacionesRecientes: row.observaciones_recientes,
+        campoCoordinacion: row.campo_coordinacion,
+        ultimoKilometraje: parseInt(row.ultimo_kilometraje || 0),
+        diasSinInspeccion: parseInt(row.dias_sin_inspeccion || 0),
+        fallasEspecificas: fallasPorVehiculo[row.placa_vehiculo] || [],
+        prioridadMantenimiento: row.fallas_criticas > 2 ? 'URGENTE' :
+                               row.fallas_criticas > 0 ? 'ALTA' :
+                               row.fallas_menores > 3 ? 'MEDIA' : 'BAJA',
+        estadoOperativo: row.fallas_criticas > 2 ? 'FUERA_DE_SERVICIO' :
+                        row.fallas_criticas > 0 ? 'RESTRICCIONES' : 'OPERATIVO'
+      }));
+    }
+
+    // Contar vehículos por estado
+    const statusCounts = { verde: 0, amarillo: 0, naranja: 0, rojo: 0 };
+    vehiculos.forEach(v => {
+      if (statusCounts[v.estado] !== undefined) {
+        statusCounts[v.estado]++;
+      }
+    });
+
+    res.json({
+      vehicles: vehiculos,
+      statusCounts
+    });
+
+  } catch (error) {
+    console.error(`Error obteniendo lista de todos los vehículos:`, error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 router.get('/list/:status', async (req, res) => {
   try {
     const { status } = req.params;

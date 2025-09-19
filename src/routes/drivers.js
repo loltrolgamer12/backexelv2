@@ -77,6 +77,99 @@ router.get('/status', async (req, res) => {
 });
 
 // GET /api/drivers/list/:status - Lista de conductores por estado
+// GET /api/drivers/list - Lista de todos los conductores
+router.get('/list', async (req, res) => {
+  try {
+    const { page = 1, limit = 100, search = '' } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Query principal con filtros
+    let whereClause = '';
+    let queryParams = [];
+    let paramIndex = 1;
+
+    if (search.trim()) {
+      whereClause += (whereClause ? ' AND ' : 'WHERE ') + `ce.conductor_nombre ILIKE $${paramIndex}`;
+      queryParams.push(`%${search.trim()}%`);
+      paramIndex++;
+    }
+
+    const conductoresQuery = `
+      SELECT 
+        ce.conductor_nombre,
+        ce.ultima_inspeccion,
+        ce.dias_sin_inspeccion,
+        ce.estado,
+        ce.total_inspecciones,
+        ce.placa_asignada,
+        ce.campo_coordinacion,
+        ce.contrato,
+        (SELECT cf.estado_fatiga 
+         FROM control_fatiga cf 
+         JOIN inspecciones i ON cf.inspeccion_id = i.id
+         WHERE i.conductor_nombre = ce.conductor_nombre
+           AND i.marca_temporal = (
+             SELECT MAX(i2.marca_temporal)
+             FROM inspecciones i2
+             WHERE i2.conductor_nombre = ce.conductor_nombre
+           )
+         LIMIT 1) as ultimo_estado_fatiga,
+        (SELECT COUNT(*) 
+         FROM elementos_inspeccion ei
+         JOIN inspecciones i ON ei.inspeccion_id = i.id
+         WHERE i.conductor_nombre = ce.conductor_nombre
+           AND NOT ei.cumple
+           AND i.marca_temporal = (
+             SELECT MAX(i2.marca_temporal)
+             FROM inspecciones i2
+             WHERE i2.conductor_nombre = ce.conductor_nombre
+           )
+         ) as fallas_ultima_inspeccion
+      FROM conductores_estado ce
+      ${whereClause}
+      ORDER BY ce.dias_sin_inspeccion DESC, ce.conductor_nombre ASC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+
+    queryParams.push(parseInt(limit), offset);
+
+    const conductoresResult = await query(conductoresQuery, queryParams);
+
+    const conductores = conductoresResult.rows.map(row => ({
+      nombre: row.conductor_nombre,
+      ultimaInspeccion: row.ultima_inspeccion,
+      diasSinInspeccion: parseInt(row.dias_sin_inspeccion),
+      estado: row.estado,
+      totalInspecciones: parseInt(row.total_inspecciones),
+      placaAsignada: row.placa_asignada,
+      campoCoordinacion: row.campo_coordinacion,
+      contrato: row.contrato,
+      ultimoEstadoFatiga: row.ultimo_estado_fatiga,
+      fallasUltimaInspeccion: parseInt(row.fallas_ultima_inspeccion || 0),
+      prioridad: row.dias_sin_inspeccion > 15 ? 'alta' : 
+                row.dias_sin_inspeccion > 10 ? 'media' : 'baja'
+    }));
+
+    // Contar conductores por estado
+    const statusCounts = { verde: 0, amarillo: 0, rojo: 0 };
+    conductores.forEach(d => {
+      if (statusCounts[d.estado] !== undefined) {
+        statusCounts[d.estado]++;
+      }
+    });
+
+    res.json({
+      drivers: conductores,
+      statusCounts
+    });
+  } catch (error) {
+    console.error(`Error obteniendo lista de todos los conductores:`, error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 router.get('/list/:status', async (req, res) => {
   try {
     const { status } = req.params;
