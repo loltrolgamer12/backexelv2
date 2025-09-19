@@ -43,17 +43,7 @@ const uploadLimiter = rateLimit({
 app.use(helmet());
 app.use(compression());
 app.use(limiter);
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://v0-vehicle-inspection-systemv3.vercel.app',
-  'https://backexelv2.vercel.app'
-];
-
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-  optionsSuccessStatus: 200
-}));
+app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
