@@ -119,7 +119,11 @@ router.get('/list/:status', async (req, res) => {
          FROM control_fatiga cf 
          JOIN inspecciones i ON cf.inspeccion_id = i.id
          WHERE i.conductor_nombre = ce.conductor_nombre
-         ORDER BY i.marca_temporal DESC 
+           AND i.marca_temporal = (
+             SELECT MAX(i2.marca_temporal)
+             FROM inspecciones i2
+             WHERE i2.conductor_nombre = ce.conductor_nombre
+           )
          LIMIT 1) as ultimo_estado_fatiga,
         -- Total de fallas en última inspección
         (SELECT COUNT(*) 
@@ -127,8 +131,12 @@ router.get('/list/:status', async (req, res) => {
          JOIN inspecciones i ON ei.inspeccion_id = i.id
          WHERE i.conductor_nombre = ce.conductor_nombre
            AND NOT ei.cumple
-         ORDER BY i.marca_temporal DESC
-         LIMIT 1) as fallas_ultima_inspeccion
+           AND i.marca_temporal = (
+             SELECT MAX(i2.marca_temporal)
+             FROM inspecciones i2
+             WHERE i2.conductor_nombre = ce.conductor_nombre
+           )
+         ) as fallas_ultima_inspeccion
       FROM conductores_estado ce
       ${whereClause}
       ORDER BY ce.dias_sin_inspeccion DESC, ce.conductor_nombre ASC
@@ -400,7 +408,14 @@ router.get('/critical', async (req, res) => {
          JOIN inspecciones i ON cf.inspeccion_id = i.id
          WHERE i.conductor_nombre = ce.conductor_nombre
            AND cf.estado_fatiga = 'rojo'
-         ORDER BY i.marca_temporal DESC 
+           AND i.marca_temporal = (
+             SELECT MAX(i2.marca_temporal)
+             FROM inspecciones i2
+             WHERE i2.conductor_nombre = ce.conductor_nombre
+               AND EXISTS (
+                 SELECT 1 FROM control_fatiga cf2 WHERE cf2.inspeccion_id = i2.id AND cf2.estado_fatiga = 'rojo'
+               )
+           )
          LIMIT 1) as ultima_fatiga_critica,
         -- Score de riesgo (calculado)
         CASE 
