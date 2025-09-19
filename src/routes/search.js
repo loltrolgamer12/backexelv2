@@ -1,4 +1,5 @@
 const express = require('express');
+const { fatigueRouter } = require('./fatigue');
 const searchRouter = express.Router();
 
 // GET /api/search/predictive - Búsqueda predictiva global
@@ -422,4 +423,4 @@ searchRouter.get('/suggestions', async (req, res) => {
   }
 });
 
-module.exports = { fatigueRouter, searchRouter };
+module.exports = { searchRouter };
