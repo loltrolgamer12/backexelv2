@@ -43,8 +43,14 @@ const uploadLimiter = rateLimit({
 app.use(helmet());
 app.use(compression());
 app.use(limiter);
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://v0-vehicle-inspection-systemv3.vercel.app',
+  'https://backexelv2.vercel.app'
+];
+
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+  origin: allowedOrigins,
   credentials: true,
   optionsSuccessStatus: 200
 }));
