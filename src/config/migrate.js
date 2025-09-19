@@ -1,0 +1,3 @@
+// Migraciones automáticas
+
+// ...implementación pendiente...

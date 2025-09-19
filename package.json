@@ -1,0 +1,44 @@
+{
+  "name": "sistema-inspeccion-vehicular-api",
+  "version": "1.0.0",
+  "description": "API REST para el Sistema de Inspección Vehicular HQ-FO-40",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "build": "echo 'Build completed'",
+    "vercel-build": "npm run build",
+    "migrate": "node src/config/migrate.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "pg": "^8.11.3",
+    "multer": "^1.4.5-lts.1",
+    "xlsx": "^0.18.5",
+    "crypto": "^1.0.1",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^6.7.1",
+    "joi": "^17.9.2",
+    "moment": "^2.29.4",
+    "express-validator": "^7.0.1",
+    "compression": "^1.7.4",
+    "@vercel/node": "^3.0.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "keywords": [
+    "inspecciones",
+    "vehiculos",
+    "excel",
+    "postgresql",
+    "api"
+  ],
+  "author": "Sistema SAS",
+  "license": "MIT"
+}
