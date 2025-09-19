@@ -1,3 +1,4 @@
+const express = require('express');
 const alertsRouter = express.Router();
 
 // GET /api/alerts/active - Alertas activas del sistema
