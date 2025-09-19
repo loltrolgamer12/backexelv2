@@ -96,6 +96,12 @@ app.get('/health', async (req, res) => {
   }
 });
 
+
+// Endpoint raíz para verificación rápida
+app.get('/', (req, res) => {
+  res.json({ success: true, mensaje: 'API backend funcionando' });
+});
+
 // Endpoint de información de la API
 app.get('/api', (req, res) => {
   res.json({
